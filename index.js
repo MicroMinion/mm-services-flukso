@@ -1,27 +1,42 @@
 'use strict'
 
 var mqtt = require('mqtt')
-var mdns = require('mdns-js')
+var MulticastDNS = require('multicast-dns')
 var _ = require('lodash')
 var assert = require('assert')
 
+var QUERY_INTERVAL = 1000 * 30
+
 var Flukso = function (options) {
+  var self = this
   assert(_.isObject(options))
   assert(_.isObject(options.platform))
   this.platform = options.platform
   assert(_.isObject(options.logger))
   this._log = options.logger
-  this.browser = mdns.createBrowser(mdns.tcp('mqtt'))
   this.sensors = {}
-  var flukso = this
-  this.browser.on('ready', function () {
-    flukso.browser.discover()
+  this.mdns = new MulticastDNS({
+    loopback: true
   })
-  this.browser.on('update', function (data) {
-    var address = data.addresses[0]
-    var port = data.port
-    flukso.createClient(address, port)
+  this.mdns.on('response', function (response) {
+    if (_.has(response, 'answers') && _.some(response.answers, function (answer) {
+        return answer.name === '_mqtt._tcp.local'
+      })) {
+      var srvRecord = _.find(response.answers, function (answer) {
+        return answer.type === 'SRV'
+      })
+      var aRecord = _.find(response.answers, function (answer) {
+        return answer.type === 'A'
+      })
+      var port = srvRecord.data.port
+      var address = aRecord.data
+      self.createClient(address, port)
+    }
   })
+  this.mdns.query('_mqtt._tcp.local')
+  setInterval(function () {
+    self.mdns.query('_mqtt._tcp.local')
+  }, QUERY_INTERVAL)
 }
 
 Flukso.prototype.createClient = function (address, port) {
@@ -61,12 +76,13 @@ Flukso.prototype.processMessage = function (topic, message) {
 }
 
 Flukso.prototype.handleDevice = function (topicArray, message) {
+  var self = this
   if (topicArray[3] === 'config') {
     _.forEach(message, function (value, key) {
       if (_.has(value, 'type') && _.has(value, 'id')) {
-        this.sensors[value.id] = value.type
+        self.sensors[value.id] = value.type
       }
-    }, this)
+    })
   }
 }
 

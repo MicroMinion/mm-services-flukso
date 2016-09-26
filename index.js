@@ -15,6 +15,7 @@ var Flukso = function (options) {
   assert(_.isObject(options.logger))
   this._log = options.logger
   this.sensors = {}
+  this._clients = {}
   this.mdns = new MulticastDNS({
     loopback: true
   })
@@ -41,18 +42,23 @@ var Flukso = function (options) {
 
 Flukso.prototype.createClient = function (address, port) {
   var self = this
-  var mqttclient = mqtt.connect({
+  var key = address + ':' + port
+  if (_.has(this._clients, key)) {
+    return
+  }
+  this._clients[key] = mqtt.connect({
     host: address,
     port: port
   })
-  mqttclient.on('connect', function () {
-    mqttclient.subscribe('/device/+/config/sensor')
-    mqttclient.subscribe('/sensor/#')
+  var client = this._clients[key]
+  client.on('connect', function () {
+    client.subscribe('/device/+/config/sensor')
+    client.subscribe('/sensor/#')
   })
-  mqttclient.on('error', function () {
+  client.on('error', function () {
     self._log.info('mqtt client raised an error')
   })
-  mqttclient.on('message', this.processMessage.bind(this))
+  client.on('message', this.processMessage.bind(this))
 }
 
 Flukso.prototype.processMessage = function (topic, message) {
@@ -89,6 +95,7 @@ Flukso.prototype.handleDevice = function (topicArray, message) {
 Flukso.prototype.handleSensor = function (topicArray, message) {
   var sensor = topicArray[2]
   if (topicArray[3] === 'gauge') {
+    this._log.debug('read sensor value ' + sensor + ' ' + message[1])
     this.platform.messaging.send('flukso.sensor.' + this.sensors[sensor], 'local', {
       value: message[1],
       unit: message[2],

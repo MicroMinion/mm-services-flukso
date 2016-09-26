@@ -1,6 +1,6 @@
 {
   "name": "mm-services-flukso",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Flukso service for MicroMinion platform",
   "main": "index.js",
   "scripts": {

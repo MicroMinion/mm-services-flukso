@@ -4,6 +4,7 @@ var mqtt = require('mqtt')
 var MulticastDNS = require('multicast-dns')
 var _ = require('lodash')
 var assert = require('assert')
+var winstonWrapper = require('winston-meta-wrapper')
 
 var QUERY_INTERVAL = 1000 * 30
 
@@ -13,7 +14,10 @@ var Flukso = function (options) {
   assert(_.isObject(options.platform))
   this.platform = options.platform
   assert(_.isObject(options.logger))
-  this._log = options.logger
+  this._log = winstonWrapper(options.logger)
+  this._log.addMeta({
+    module: 'mm:services:flukso'
+  })
   this.sensors = {}
   this._clients = {}
   this.mdns = new MulticastDNS({

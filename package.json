@@ -1,6 +1,6 @@
 {
   "name": "mm-services-flukso",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Flukso service for MicroMinion platform",
   "main": "index.js",
   "scripts": {
@@ -31,6 +31,7 @@
   "dependencies": {
     "lodash": "^4.14.1",
     "mqtt": "^1.13.0",
-    "multicast-dns": "^6.0.1"
+    "multicast-dns": "^6.0.1",
+    "winston-meta-wrapper": "^1.2.0"
   }
 }
